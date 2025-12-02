@@ -69,7 +69,8 @@ def gestionar_usuario(uid, accion="leer", intentos=0, es_premium=False, fecha=No
         if cell:
             row = sheet_users.row_values(cell.row)
             # row: [uid, intentos, premium, fecha, codigos_usados]
-            while len(row) < 5: row.append("") # Evitar error si falta columna
+            # Rellenamos la lista si faltan columnas para evitar errores
+            while len(row) < 5: row.append("")
             
             estado_premium = str(row[2]).upper() == "TRUE"
             historial_codigos = str(row[4])
@@ -112,7 +113,8 @@ def gestionar_usuario(uid, accion="leer", intentos=0, es_premium=False, fecha=No
             sheet_users.update_cell(cell.row, 2, str(intentos))
             sheet_users.update_cell(cell.row, 3, prem_str)
             if fecha: sheet_users.update_cell(cell.row, 4, fecha_str)
-            sheet_users.update_cell(cell.row, 5, codigos_actuales) # Columna 5
+            # Actualizamos historial de códigos (Columna 5)
+            sheet_users.update_cell(cell.row, 5, codigos_actuales) 
         else:
             # Usuario nuevo
             codigos_iniciales = nuevo_codigo if nuevo_codigo else ""
@@ -169,7 +171,7 @@ with st.sidebar:
         st.markdown("### 💎 Pásate a PRO")
         st.markdown("Desbloquea preguntas Élite y análisis profundo.")
         
-        # --- BOTÓN DE PAGO ACTUALIZADO A $50.000 ---
+        # --- BOTÓN DE PAGO ($50.000) ---
         st.link_button("👉 Adquirir Premium ($50.000)", LINK_DE_PAGO, type="primary")
         
         # ACTIVACIÓN DE CÓDIGO
@@ -261,7 +263,7 @@ if not st.session_state.examen_iniciado:
         iniciar_examen_func()
 
 else:
-    # --- LOGICA DEL QUIZ (CORREGIDA) ---
+    # --- LOGICA DEL QUIZ (CORREGIDA Y MEJORADA) ---
     preguntas = st.session_state.preguntas_examen
     if st.session_state.indice < len(preguntas):
         p = preguntas[st.session_state.indice]
@@ -284,7 +286,7 @@ else:
                     st.session_state.puntaje += 1
                 else:
                     st.session_state.errores.append(p)
-                st.rerun() # Recargamos para mostrar la explicación fija
+                st.rerun() # Recarga para mostrar la explicación fija
 
         # ESTADO 2: Ya respondió (Mostrar Retroalimentación Fija)
         else:
@@ -297,7 +299,7 @@ else:
             else:
                 st.error(f"❌ Incorrecto. La respuesta correcta era: {p['respuesta']}")
                 
-                # Mostrar Retroalimentación completa visible
+                # Mostrar Retroalimentación completa visible (NO desaparece)
                 st.markdown("---")
                 col1, col2 = st.columns(2)
                 with col1:
@@ -313,21 +315,53 @@ else:
                 st.rerun()
 
     else:
-        # --- PANTALLA FINAL ---
+        # --- PANTALLA FINAL CON DETALLE DE ERRORES ---
         st.balloons()
         st.title("📊 Resultados Finales")
         
         score = st.session_state.puntaje
         total = len(preguntas)
-        st.metric("Puntaje", f"{score}/{total}", delta=f"{int(score/total*100)}% Efectividad")
         
+        if total > 0:
+            efectividad = int(score/total*100)
+        else:
+            efectividad = 0
+            
+        st.metric("Puntaje", f"{score}/{total}", delta=f"{efectividad}% Efectividad")
+        
+        if efectividad == 100:
+            st.success("¡Perfecto! Eres un genio. 🌟")
+        elif efectividad >= 60:
+            st.warning("Buen trabajo, pero sigue practicando. 💪")
+        else:
+            st.error("Necesitas reforzar temas clave. 📚")
+        
+        # --- REVISIÓN DETALLADA DE ERRORES (NUEVO) ---
         if st.session_state.errores:
             st.divider()
-            st.subheader("📝 Plan de Mejora")
+            st.subheader("📝 Revisión de Respuestas Incorrectas")
+            st.write("Aquí tienes el detalle de lo que fallaste:")
+            
             for err in st.session_state.errores:
-                with st.expander(f"🔴 Fallo en: {err['tema']}"):
-                    st.write(f"**Pregunta:** {err['pregunta']}")
-                    st.info(f"**Consejo:** {err['consejo']}")
+                # Usamos un expander para cada error
+                with st.expander(f"❌ Pregunta: {err['pregunta']}"):
+                    
+                    st.markdown(f"**Tema:** {err['tema']}")
+                    st.markdown("---")
+                    
+                    st.markdown("**Opciones:**")
+                    # Recorremos las opciones para mostrarlas
+                    for op in err['opciones']:
+                        if op == err['respuesta']:
+                            # Resaltamos la CORRECTA en verde y negrita
+                            st.markdown(f":green[**✅ {op} (Respuesta Correcta)**]")
+                        else:
+                            # Las otras opciones normales
+                            st.markdown(f"⚪ {op}")
+                    
+                    st.markdown("---")
+                    st.info(f"💡 **Explicación:** {err['explicacion']}")
+                    st.warning(f"📘 **Consejo de estudio:** {err['consejo']}")
         
         st.divider()
         if st.button("🏠 Volver al Inicio"):
